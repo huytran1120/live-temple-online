@@ -97,7 +97,7 @@
       if (!dev) return '';
       return `
         <div class="vip-devotee-slot" style="left: ${slot.x}px; top: ${slot.y}px; z-index: ${12 + idx};">
-          <img src="/assets/devotee.png" alt="VIP Devotee" class="devotee-sprite" />
+          <img src="./assets/devotee.png" alt="VIP Devotee" class="devotee-sprite" />
           <div class="vip-rank-pill">
             <span class="vip-rank-num">${slot.rank}</span>
             <span class="vip-rank-name">${escapeHtml(shortenName(dev.name, 12))}</span>
@@ -182,7 +182,7 @@
           style="left: ${seat.x}px; top: ${seat.y}px; z-index: ${20 + seat.row * 2}; transform: translate(-50%, -100%) scale(${seat.scale});"
         >
           <img
-            src="/assets/devotee.png"
+            src="./assets/devotee.png"
             alt="Phật tử"
             class="devotee-sprite"
             style="animation-delay: ${((idx * 0.27) % 3.5).toFixed(2)}s;"
@@ -195,14 +195,14 @@
 
   // Preload toàn bộ 8 frame nhân vật vào bộ nhớ để chuyển frame mượt 0ms
   const SPRITE_FRAMES = {
-    walk1: '/assets/devotee_walk.png',
-    walk2: '/assets/devotee_walk_2.png',
-    kneelDown: '/assets/devotee_kneel_down.png',
-    kneel: '/assets/devotee.png',
-    forehead: '/assets/devotee_bow.png',
-    bowMid: '/assets/devotee_bow_mid.png',
-    prostrate: '/assets/devotee_prostrate.png',
-    prostrateDeep: '/assets/devotee_prostrate_deep.png'
+    walk1: './assets/devotee_walk.png',
+    walk2: './assets/devotee_walk_2.png',
+    kneelDown: './assets/devotee_kneel_down.png',
+    kneel: './assets/devotee.png',
+    forehead: './assets/devotee_bow.png',
+    bowMid: './assets/devotee_bow_mid.png',
+    prostrate: './assets/devotee_prostrate.png',
+    prostrateDeep: './assets/devotee_prostrate_deep.png'
   };
   Object.values(SPRITE_FRAMES).forEach((url) => {
     const img = new Image();
@@ -643,6 +643,13 @@
   }
   connectWebSocket();
 
+  // Bộ quẻ dự phòng khi chạy trên GitHub Pages (Static Mode)
+  const CLIENT_FORTUNES = [
+    { number: 1, rank: 'Thượng Thượng Cát', title: 'Nhật Xuất Đông Phương', poem: 'Đông phương nhật xuất chiếu Càn Khôn\nHoa nở đầy cành rạng sắc xuân\nCông danh tài lộc đều viên mãn\nGia đạo bình an phúc lộc tồn.', meaning: 'Mọi sự mưu cầu đều đại cát đại lợi, quý nhân phù trợ.' },
+    { number: 8, rank: 'Thượng Cát', title: 'Kim Liên Khai Nở', poem: 'Sen vàng nở rộ giữa hồ trong\nHương thơm lan tỏa khắp non sông\nLòng thành thắp nén nhang cầu nguyện\nTrời Phật chứng tri thỏa ước mong.', meaning: 'Tâm thiện lành ắt gặp phước báu, vạn sự bình an.' },
+    { number: 12, rank: 'Đại Cát', title: 'Long Vân Tương Hội', poem: 'Rồng thiêng gặp hội tầng mây xanh\nVượt Vũ Môn Quan rạng rỡ danh\nThí chủ kiên tâm hành thiện đạo\nPhúc dày lộc vượng khắp gia đình.', meaning: 'Thời vận đang lên mạnh mẽ, kinh doanh phát đạt.' }
+  ];
+
   async function callRpc(method, params = {}) {
     audio.ensureContext();
     const payload = {
@@ -655,15 +662,45 @@
       ws.send(JSON.stringify(payload));
       return;
     }
-    const res = await fetch('/rpc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data?.result?.state) updateUIState(data.result.state);
-    if (data?.result?.event) triggerRitualVisuals(data.result.event);
-    return data;
+    try {
+      const res = await fetch('./rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.result?.state) updateUIState(data.result.state);
+        if (data?.result?.event) triggerRitualVisuals(data.result.event);
+        return data;
+      }
+    } catch (_) {}
+
+    // Fallback Static / GitHub Pages Mode: Tự kích hoạt visual & âm thanh cục bộ
+    const user = params.user || 'Thí Chủ Hữu Duyên';
+    const wish = params.wish || params.topic || 'Cầu bình an, vạn sự cát tường';
+    let mockEvt = null;
+
+    if (method === 'temple.burnIncense') {
+      mockEvt = { type: 'burnIncense', user, avatar: '', count: params.count || 3, merit: 15, wish, ttsText: `Cảm tạ thí chủ ${user} đã dâng hương cầu an.` };
+    } else if (method === 'temple.strikeWoodenFish') {
+      mockEvt = { type: 'strikeWoodenFish', user, avatar: '', count: params.count || 1, merit: params.count || 1 };
+    } else if (method === 'temple.ringBell') {
+      mockEvt = { type: 'ringBell', user, avatar: '', count: 1, merit: 10, wish, ttsText: '' };
+    } else if (method === 'temple.sendPrayer') {
+      mockEvt = { type: 'sendPrayer', user, avatar: '', merit: 10, wish, ttsText: `Lời cầu nguyện của thí chủ ${user}: ${wish}` };
+    } else if (method === 'temple.offerGift') {
+      mockEvt = { type: 'offerGift', user, avatar: '', giftName: params.giftName || 'Đài Hoa Sen Vàng', merit: 100, wish };
+    } else if (method === 'temple.grandCeremony') {
+      mockEvt = { type: 'grandCeremony', user, avatar: '', giftName: 'Đại Lễ Kim Long Chầu Phật', merit: 500, wish };
+    } else if (method === 'temple.drawFortune') {
+      const pick = CLIENT_FORTUNES[Math.floor(Math.random() * CLIENT_FORTUNES.length)];
+      mockEvt = { type: 'drawFortune', user, avatar: '', fortune: pick, merit: 10 };
+    }
+
+    if (mockEvt) {
+      triggerRitualVisuals(mockEvt);
+    }
   }
 
   function getFormInput() {
