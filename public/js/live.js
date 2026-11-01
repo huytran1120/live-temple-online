@@ -33,12 +33,15 @@
     audio.ensureContext();
     const btnUnlock = document.getElementById('btnUnlockAudio');
     if (btnUnlock) {
-      btnUnlock.textContent = '✅ Âm Thanh Chùa Đã Sẵn Sàng';
+      btnUnlock.textContent = '✅ Âm Thanh & Giọng Đọc Đã Bật';
       btnUnlock.classList.remove('gold');
       btnUnlock.classList.add('active-toggle');
     }
+    // Phát thử một câu ngắn chào thí chủ để kích hoạt audio output
+    audio.enqueueTts('Nam mô A Di Đà Phật. Âm thanh Chánh Điện đã sẵn sàng.');
   }
   window.addEventListener('pointerdown', unlockAudioOnce, { once: true });
+  document.getElementById('btnUnlockAudio')?.addEventListener('click', unlockAudioOnce);
 
   // 3. Vẽ các nén nhang đang cháy trong Lư Hương Đỉnh Đồng (x=540, y=895)
   const incenseHolder = document.getElementById('incenseSticksHolder');
@@ -682,20 +685,21 @@
     let mockEvt = null;
 
     if (method === 'temple.burnIncense') {
-      mockEvt = { type: 'burnIncense', user, avatar: '', count: params.count || 3, merit: 15, wish, ttsText: `Cảm tạ thí chủ ${user} đã dâng hương cầu an.` };
+      mockEvt = { type: 'burnIncense', user, avatar: '', count: params.count || 3, merit: 15, wish, ttsText: `Nam mô A Di Đà Phật. Cảm tạ thí chủ ${user} đã thành tâm thắp ${params.count || 3} nén hương thơm. ${wish}.` };
     } else if (method === 'temple.strikeWoodenFish') {
       mockEvt = { type: 'strikeWoodenFish', user, avatar: '', count: params.count || 1, merit: params.count || 1 };
     } else if (method === 'temple.ringBell') {
-      mockEvt = { type: 'ringBell', user, avatar: '', count: 1, merit: 10, wish, ttsText: '' };
+      mockEvt = { type: 'ringBell', user, avatar: '', count: 1, merit: 10, wish, ttsText: `Thí chủ ${user} thỉnh Đại Hồng Chung: ${wish}.` };
     } else if (method === 'temple.sendPrayer') {
-      mockEvt = { type: 'sendPrayer', user, avatar: '', merit: 10, wish, ttsText: `Lời cầu nguyện của thí chủ ${user}: ${wish}` };
+      mockEvt = { type: 'sendPrayer', user, avatar: '', merit: 10, wish, ttsText: `Lời cầu nguyện của thí chủ ${user}: ${wish}. Nam mô A Di Đà Phật.` };
     } else if (method === 'temple.offerGift') {
-      mockEvt = { type: 'offerGift', user, avatar: '', giftName: params.giftName || 'Đài Hoa Sen Vàng', merit: 100, wish };
+      const gName = params.giftName || 'Đài Hoa Sen Vàng';
+      mockEvt = { type: 'offerGift', user, avatar: '', giftName: gName, merit: 100, wish, ttsText: `Công đức vô lượng! Cảm tạ thí chủ ${user} đã phát tâm dâng cúng ${gName}.` };
     } else if (method === 'temple.grandCeremony') {
-      mockEvt = { type: 'grandCeremony', user, avatar: '', giftName: 'Đại Lễ Kim Long Chầu Phật', merit: 500, wish };
+      mockEvt = { type: 'grandCeremony', user, avatar: '', giftName: 'Đại Lễ Kim Long Chầu Phật', merit: 500, wish, ttsText: `Công đức vô lượng! Đại thí chủ ${user} phát tâm kích hoạt Đại Lễ Kim Long Chầu Phật!` };
     } else if (method === 'temple.drawFortune') {
       const pick = CLIENT_FORTUNES[Math.floor(Math.random() * CLIENT_FORTUNES.length)];
-      mockEvt = { type: 'drawFortune', user, avatar: '', fortune: pick, merit: 10 };
+      mockEvt = { type: 'drawFortune', user, avatar: '', fortune: pick, merit: 10, ttsText: `Thí chủ ${user} vừa gieo được Quẻ số ${pick.number}, ${pick.rank}, ${pick.title}. ${pick.meaning}.` };
     }
 
     if (mockEvt) {

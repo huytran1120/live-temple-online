@@ -373,8 +373,14 @@ class TempleAudioEngine {
         await this.playWavUrl(audioUrl);
         if (item.onEnd) item.onEnd();
       } else {
+        // Fallback Web Speech API khi chạy trên GitHub Pages (không có backend ZeroTTS)
+        this.setBgDucking(true);
+        if (this.onTtsStateChange) {
+          this.onTtsStateChange({ speaking: true, synthesizing: false, text: item.text });
+        }
         if (item.onStart) item.onStart();
-        if (item.onEnd) setTimeout(item.onEnd, 5500);
+        await this.speakWebSpeech(item.text);
+        if (item.onEnd) item.onEnd();
       }
     } catch (err) {
       console.warn('[ZeroTTS Playback Warning]', err);
@@ -391,6 +397,46 @@ class TempleAudioEngine {
         setTimeout(() => this.processTtsQueue(), 250);
       }
     }
+  }
+
+  speakWebSpeech(text) {
+    return new Promise((resolve) => {
+      if (!('speechSynthesis' in window)) {
+        return resolve();
+      }
+      try {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'vi-VN';
+        utter.rate = 0.95;
+        utter.pitch = 1.0;
+        utter.volume = this.ttsVolume;
+
+        const voices = window.speechSynthesis.getVoices();
+        const viVoice = voices.find((v) => v.lang && v.lang.toLowerCase().includes('vi'));
+        if (viVoice) {
+          utter.voice = viVoice;
+        }
+
+        utter.onend = () => resolve();
+        utter.onerror = () => resolve();
+
+        // Safety timeout phòng trường hợp speech synthesis bị treo trên một số trình duyệt
+        const safetyTimer = setTimeout(() => {
+          resolve();
+        }, 8000);
+
+        const origEnd = utter.onend;
+        utter.onend = () => {
+          clearTimeout(safetyTimer);
+          if (origEnd) origEnd();
+        };
+
+        window.speechSynthesis.speak(utter);
+      } catch (_) {
+        resolve();
+      }
+    });
   }
 
   playWavUrl(url) {
